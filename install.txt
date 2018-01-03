@@ -6,6 +6,8 @@ sudo pip3 install transitions
 
 sudo pip3 install python-telegram-bot
 
+sudo pip3 install pymongo
+
 sudo apt-get update
 
 sudo apt-get install graphviz pkg-config python-dev libgraphviz-dev mongodb
