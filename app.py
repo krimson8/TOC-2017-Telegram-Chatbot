@@ -58,6 +58,12 @@ class TocMachine(GraphMachine):
         machine.get_graph().draw("state_diagram.png", prog="dot")
         update.message.reply_photo(open("state_diagram.png", "rb"))
         # bot.send_photo(chat_id=chat_id, photo=open('state_diagram.png', 'rb'))
+        for post in col2.find():
+            x = post
+            for k, v in x.items():
+                if k == "opinion":
+                    print("Message: " + v)
+                    update.message.reply_text("Message: " + v)
         self.go_back(update)
 
     def on_enter_state5(self, update):
@@ -65,32 +71,48 @@ class TocMachine(GraphMachine):
         name = text[5:8]
         content = text[9:]
         print(name + ": " + content)
+        post = {"name": name, "content": content}
+        col.insert_one(post).inserted_id
         self.done_func(update)
 
     def on_enter_state6(self, update):
         text = update.message.text
         name = text[5:8]
         print(name)
+        for post in col.find({"name": name}):
+            x = post
+            for k, v in x.items():
+                if k == "content":
+                    print("Message: " + v)
+                    update.message.reply_text("Message: " + v)
         self.done_func(update)
 
     def on_enter_state7(self, update):
         text = update.message.text
         opinion = text[5:]
         print(opinion)
+        post = {"opinion": opinion}
+        col2.insert_one(post).inserted_id
         self.done_func(update)
 
     def on_enter_user(self, update):
         update.message.reply_text("User")
         update.message.reply_text("Welcome to Xiong_Bot \nThis is a place where you can leave\nmessage for others")
+        update.message.reply_text("Type the follow command to use the bot\n" +
+                                  "1. gs1 (leave message for others)\n" +
+                                  "2. gs2 (receive ur messages)\n" +
+                                  "3. gs3 (leave opinion for me)\n" +
+                                  "4. gs4 (show all the opinion and states diagram)")
         print('Backed to user')
 
     def on_exit_user(self, update):
         print('not in user')
 
 
-client = MongoClient()
-db = client.xiong
-mycol = db.mycol
+client = MongoClient('mongodb://localhost:27017')
+db = client.TOC
+col = db.comment
+col2 = db.opinion
 
 app = Flask(__name__)
 bot = telegram.Bot(token=API_TOKEN)
@@ -151,6 +173,11 @@ def webhook_handler():
     print(text)
     if text == "/start" or text == "/restart":
         update.message.reply_text("Welcome to Xiong_Bot \nThis is a place where you can leave\nmessage for others")
+        update.message.reply_text("Type the follow command to use the bot\n" +
+                                  "1. gs1 (leave message for others)\n" +
+                                  "2. gs2 (receive ur messages)\n" +
+                                  "3. gs3 (leave opinion for me)\n" +
+                                  "4. gs4 (show all the opinion and states diagram)")
 
     # first OP
     elif text[0:4].lower() == "send" and machine.state == "state1":
@@ -163,13 +190,13 @@ def webhook_handler():
         machine.g_s7(update)
 
     # change to button operation
-    elif text.lower() == 'go to state1':
+    elif text.lower() == 'gs1':
         machine.g_s1(update)
-    elif text.lower() == 'go to state2':
+    elif text.lower() == 'gs2':
         machine.g_s2(update)
-    elif text.lower() == 'go to state3':
+    elif text.lower() == 'gs3':
         machine.g_s3(update)
-    elif text.lower() == 'go to state4':
+    elif text.lower() == 'gs4':
         machine.g_s4(update)
 
     else:
