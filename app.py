@@ -8,7 +8,7 @@ from flask import Flask, request, send_file
 from transitions.extensions import GraphMachine
 
 API_TOKEN = '470447162:AAGF3hkkIO5Ktbv0sbkDyG3dQ_m6e7HJmUs'
-WEBHOOK_URL = 'https://2e143d6d.ngrok.io/hook'
+WEBHOOK_URL = 'https://5beb5005.ngrok.io/hook'
 
 class TocMachine(GraphMachine):
     def __init__(self, **machine_configs):
@@ -17,56 +17,76 @@ class TocMachine(GraphMachine):
             **machine_configs
         )
 
-    def is_going_to_state1(self, update):
-        text = update.message.text
-        return text.lower() == 'sohai mou'
-
-    def is_going_to_state2(self, update):
-        text = update.message.text
-        return text.lower() == 'go to state2'
-
-    def is_going_to_state3(self, update):
-        text = update.message.text
-        return text.lower() == 'go to state3'
+    # def is_going_to_state1(self, update):
+    #     text = update.message.text
+    #     return text.lower() == 'sohai mou'
+    #
+    # def is_going_to_state2(self, update):
+    #     text = update.message.text
+    #     return text.lower() == 'go to state2'
+    #
+    # def is_going_to_state3(self, update):
+    #     text = update.message.text
+    #     return text.lower() == 'go to state3'
 
     def on_enter_state1(self, update):
-        update.message.reply_text("Please enter the message you want to send to others")
-        update.message.reply_text("Please enter according to this format")
-        update.message.reply_text("SEND: (NAME) - YYY")
+        update.message.reply_text("Please enter the message you want to send to others\n" +
+                                  "enter according to this format\n" +
+                                  "SEND:(NAME)-YYY \nwhich the name should be three character\n" +
+                                  "either chinese or english\n" +
+                                  "followed by a dash and YYY is the content")
 
     def on_exit_state1(self, update):
         print('Leaving state1')
 
     def on_enter_state2(self, update):
-        update.message.reply_text("Please enter ur name in this format ")
-        update.message.reply_text("RECV: (NAME) - YYY")
+        update.message.reply_text("Please enter ur name in this format\n" +
+                                  "RECV:(NAME)\nwhich the name should be three character\n" +
+                                  "either chinese or english")
 
     def on_exit_state2(self, update):
         print('Leaving state2')
 
     def on_enter_state3(self, update):
-        update.message.reply_text("Please kindly give me ur opinion regarding")
-        update.message.reply_text("this bot. Any opinion are appreciated")
-        update.message.reply_text("OPOP:  YYY")
+        update.message.reply_text("Please enter ur opinion in this format\n" +
+                                  "OPOP:(CONTENT)\nwhich the CONTENT can be whatever\n")
 
     def on_exit_state3(self, update):
         print('Leaving state3')
 
+    def on_enter_state4(self, update):
+        machine.get_graph().draw("state_diagram.png", prog="dot")
+        update.message.reply_photo(open("state_diagram.png", "rb"))
+        # bot.send_photo(chat_id=chat_id, photo=open('state_diagram.png', 'rb'))
+        self.go_back(update)
+
     def on_enter_state5(self, update):
         text = update.message.text
-        print(text[6:9])
+        name = text[5:8]
+        content = text[9:]
+        print(name + ": " + content)
+        self.done_func(update)
+
+    def on_enter_state6(self, update):
+        text = update.message.text
+        name = text[5:8]
+        print(name)
+        self.done_func(update)
+
+    def on_enter_state7(self, update):
+        text = update.message.text
+        opinion = text[5:]
+        print(opinion)
+        self.done_func(update)
 
     def on_enter_user(self, update):
         update.message.reply_text("User")
-        update.message.reply_text("Welcome to Xiong_Bot")
-        update.message.reply_text("This is a place where you can leave")
-        update.message.reply_text("message for others")
+        update.message.reply_text("Welcome to Xiong_Bot \nThis is a place where you can leave\nmessage for others")
         print('Backed to user')
 
-    def on_exit_user(self,update):
-        print('not in init')
+    def on_exit_user(self, update):
+        print('not in user')
 
-init = 1
 
 client = MongoClient()
 db = client.xiong
@@ -100,7 +120,12 @@ machine = TocMachine(
         },
         {
             'trigger': 'go_back',
-            'source': ['state1', 'state2', 'state3'],
+            'source': ['state1', 'state2', 'state3', 'state4'],
+            'dest': 'user'
+        },
+        {
+            'trigger': 'done_func',
+            'source': ['state5', 'state6', 'state7'],
             'dest': 'user'
         }
     ],
@@ -123,25 +148,18 @@ def _set_webhook():
 def webhook_handler():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
     text = update.message.text
+    print(text)
     if text == "/start" or text == "/restart":
-        update.message.reply_text("Welcome to Xiong_Bot")
-        update.message.reply_text("This is a place where you can leave")
-        update.message.reply_text("message for others")
-        print(machine.state)
-        # (to receive)update.message.reply_text("Welcome to Xiong_Bot")
-        # (to send)update.message.reply_text("Welcome to Xiong_Bot")
-        # (leave opinion)update.message.reply_text("Welcome to Xiong_Bot")
-    # elif text == "go back":
-        # machine.go_back(update)
+        update.message.reply_text("Welcome to Xiong_Bot \nThis is a place where you can leave\nmessage for others")
 
     # first OP
-    elif text[0:4] == "SEND":
+    elif text[0:4].lower() == "send" and machine.state == "state1":
         machine.g_s5(update)
 
-    elif text[0:4] == "RECV":
+    elif text[0:4].lower() == "recv" and machine.state == "state2":
         machine.g_s6(update)
 
-    elif text[0:4] == "OPOP":
+    elif text[0:4].lower() == "opop" and machine.state == "state3":
         machine.g_s7(update)
 
     # change to button operation
@@ -151,9 +169,14 @@ def webhook_handler():
         machine.g_s2(update)
     elif text.lower() == 'go to state3':
         machine.g_s3(update)
+    elif text.lower() == 'go to state4':
+        machine.g_s4(update)
 
     else:
         update.message.reply_text(text)
+
+    text = ""
+    print(machine.state)
     return 'ok'
 
 
